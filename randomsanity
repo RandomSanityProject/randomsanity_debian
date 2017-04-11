@@ -1,0 +1,69 @@
+#! /bin/bash
+### BEGIN INIT INFO
+# Provides:          randomsanity
+# Required-Start:    $network $named $syslog urandom
+# Required-Stop:
+# Default-Start:     3 4 5
+# Default-Stop:
+# Description:       Sanity test /dev/urandom at startup
+### END INIT INFO
+
+# Author: Gavin Andresen <gavinandresen@gmail.com>
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="Sanity test /dev/urandom using the randomsanity.org REST service"
+
+BASEURL=http://rest.randomsanity.org/v1/q
+
+# Read configuration variable file if it is present
+[ -r /etc/default/randomsanity ] && . /etc/default/randomsanity
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+
+# Define LSB log_* functions.
+. /lib/lsb/init-functions
+
+checkbytes() {
+        log_begin_msg "Sanity checking /dev/urandom..."
+        URL="$BASEURL/$1"
+        # RESPONSE is an array of response lines from the server
+        RESPONSE=( $(wget --quiet --tries=1 --output-document=- --timeout=5 --max-redirect=1 --save-headers $URL) )
+        WGET_RESULT=$?
+        log_end_msg $WGET_RESULT
+        if [ ! $WGET_RESULT ]
+        then
+                log_warning_msg "wget $URL failed: (${WGET_RESULT})"
+                return $WGET_RESULT
+        fi
+        
+        if [ "${RESPONSE[1]}" = "200" ]  # second line is HTTP response code, should be 200 (OK):
+        then
+                last=$(( ${#RESPONSE[@]}-1 ))  # Index of last line
+                JSONRESULT=${RESPONSE[$last]}
+                if [ "$JSONRESULT" = "false" ]
+                then
+                        log_failure_msg "random sanity test failure"
+                fi
+        else
+                log_warning_msg "${RESPONSE[1]} response from ${URL}"
+        fi
+        return 0
+}
+
+case "$1" in
+  start)
+        hexbytes=$(head --bytes=32 /dev/urandom | od -v -t x1 -An | tr -d '\n ')
+        checkbytes "$hexbytes"
+        ;;
+  test)
+        hexbytes=$(head --bytes=32 /dev/zero | od -v -t x1 -An | tr -d '\n ')
+        checkbytes "$hexbytes"
+        ;;
+  *)
+        echo "Usage: $SCRIPTNAME {start|test}" >&2
+        exit 3
+        ;;
+esac
+
+:
