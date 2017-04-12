@@ -67,6 +67,8 @@ case "$1" in
         hexbytes=$(head --bytes=32 /dev/urandom | od -v -t x1 -An | tr -d '\n ')
         checkbytes "$hexbytes"
         ;;
+  stop)
+        ;;
   test)
         # Force a failure by using /dev/zero as the source of 'randomness':
         hexbytes=$(head --bytes=32 /dev/zero | od -v -t x1 -An | tr -d '\n ')
