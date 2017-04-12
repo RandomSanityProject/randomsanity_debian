@@ -5,15 +5,13 @@
 # Required-Stop:
 # Default-Start:     3 4 5
 # Default-Stop:
-# Description:       Sanity test /dev/urandom at startup
+# Description:       Sanity check /dev/urandom at startup
 ### END INIT INFO
 
 # Author: Gavin Andresen <gavinandresen@gmail.com>
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="Sanity test /dev/urandom using the randomsanity.org REST service"
-
-BASEURL=http://rest.randomsanity.org/v1/q
+DESC="Sanity check /dev/urandom using the randomsanity.org REST service"
 
 # Read configuration variable file if it is present
 [ -r /etc/default/randomsanity ] && . /etc/default/randomsanity
@@ -24,30 +22,43 @@ BASEURL=http://rest.randomsanity.org/v1/q
 # Define LSB log_* functions.
 . /lib/lsb/init-functions
 
+if [ -z "${BASEURL+x}" ]  # Default if not set in config file:
+then
+        BASEURL=http://rest.randomsanity.org/v1/q
+fi
+
 checkbytes() {
         log_begin_msg "Sanity checking /dev/urandom..."
         URL="$BASEURL/$1"
         # RESPONSE is an array of response lines from the server
-        RESPONSE=( $(wget --quiet --tries=1 --output-document=- --timeout=5 --max-redirect=1 --save-headers $URL) )
+        RESPONSE=( $(wget --quiet --tries=1 --output-document=- --timeout=5 --max-redirect=1 --save-headers "$URL" ) )
         WGET_RESULT=$?
-        log_end_msg $WGET_RESULT
-        if [ ! $WGET_RESULT ]
+        if [ $WGET_RESULT -ne 0 ]
         then
+                log_end_msg $WGET_RESULT
                 log_warning_msg "wget $URL failed: (${WGET_RESULT})"
                 return $WGET_RESULT
         fi
         
-        if [ "${RESPONSE[1]}" = "200" ]  # second line is HTTP response code, should be 200 (OK):
-        then
-                last=$(( ${#RESPONSE[@]}-1 ))  # Index of last line
-                JSONRESULT=${RESPONSE[$last]}
-                if [ "$JSONRESULT" = "false" ]
-                then
-                        log_failure_msg "random sanity test failure"
-                fi
-        else
-                log_warning_msg "${RESPONSE[1]} response from ${URL}"
-        fi
+        last=$(( ${#RESPONSE[@]}-1 ))  # Index of last line
+        case "${RESPONSE[$last]}" in
+            true)
+                log_end_msg 0
+                ;;
+            false)
+                log_end_msg 1
+                log_failure_msg "random sanity check failure"
+                ;;
+            *)
+                log_end_msg 1
+                log_warning_msg "Unexpected result from server: ${RESPONSE[$last]}"
+                return 1
+                ;;
+        esac
+
+        # RESPONSE contains entropy from the server; mix it in to /dev/urandom:
+        cat <<< "${RESPONSE[*]}" >> /dev/urandom
+
         return 0
 }
 
@@ -57,6 +68,7 @@ case "$1" in
         checkbytes "$hexbytes"
         ;;
   test)
+        # Force a failure by using /dev/zero as the source of 'randomness':
         hexbytes=$(head --bytes=32 /dev/zero | od -v -t x1 -An | tr -d '\n ')
         checkbytes "$hexbytes"
         ;;
