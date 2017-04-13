@@ -64,14 +64,14 @@ checkbytes() {
 
 case "$1" in
   start)
-        hexbytes=$(head --bytes=32 /dev/urandom | od -v -t x1 -An | tr -d '\n ')
+        hexbytes=$(head --bytes=64 /dev/urandom | od -v -t x1 -An | tr -d '\n ')
         checkbytes "$hexbytes"
         ;;
   stop)
         ;;
   test)
         # Force a failure by using /dev/zero as the source of 'randomness':
-        hexbytes=$(head --bytes=32 /dev/zero | od -v -t x1 -An | tr -d '\n ')
+        hexbytes=$(head --bytes=64 /dev/zero | od -v -t x1 -An | tr -d '\n ')
         checkbytes "$hexbytes"
         ;;
   *)
