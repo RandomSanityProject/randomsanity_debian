@@ -31,7 +31,7 @@ checkbytes() {
         log_begin_msg "Sanity checking /dev/urandom..."
         URL="$BASEURL/$1"
         # RESPONSE is an array of response lines from the server
-        RESPONSE=( $(wget --quiet --tries=1 --output-document=- --timeout=5 --max-redirect=1 --save-headers "$URL" ) )
+        IFS=$'\n' RESPONSE=( $(wget --quiet --tries=1 --output-document=- --timeout=5 --max-redirect=1 --save-headers "$URL" ) )
         WGET_RESULT=$?
         if [ $WGET_RESULT -ne 0 ]
         then
