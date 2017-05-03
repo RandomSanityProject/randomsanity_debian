@@ -24,7 +24,7 @@ DESC="Sanity check /dev/urandom using the randomsanity.org REST service"
 
 if [ -z "${BASEURL+x}" ]  # Default if not set in config file:
 then
-        BASEURL=http://rest.randomsanity.org/v1/q
+        BASEURL=https://rest.randomsanity.org/v1/q
 fi
 
 checkbytes() {
