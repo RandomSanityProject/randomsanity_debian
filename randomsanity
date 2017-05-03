@@ -56,15 +56,6 @@ checkbytes() {
                 ;;
         esac
 
-        # RESPONSE contains entropy from the server (X-Entropy); mix it in to /dev/urandom:
-        local resp
-        for resp in "${RESPONSE[@]}"; do
-            if [[ "$(cut -d':' -f1 <<< "$resp")" == "X-Entropy" ]]; then
-                printf "%s" "$resp" | cut -d' ' -f2 | tr -d '\n\r' >> /dev/urandom
-                break
-            fi
-        done
-
         return 0
 }
 
