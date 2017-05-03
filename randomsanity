@@ -57,10 +57,15 @@ checkbytes() {
         esac
 
         # RESPONSE contains entropy from the server (X-Entropy); mix it in to /dev/urandom:
-        local resp
+        local resp rand
         for resp in "${RESPONSE[@]}"; do
             if [[ "$(cut -d':' -f1 <<< "$resp")" == "X-Entropy" ]]; then
-                printf "%s" "$resp" | cut -d' ' -f2 | tr -d '\n\r' >> /dev/urandom
+                rand="$(printf "%s" "$resp" | cut -d ' ' -f2 | tr -d '\n\r')"
+                if which sed > /dev/null 2>&1; then
+                    printf "%s" "$rand" | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf >> /dev/urandom
+                elif which perl > /dev/null 2>&1; then
+                    printf "%s" "$rand" | perl -e 'print pack "H*", <STDIN>' >> /dev/urandom
+                fi
                 break
             fi
         done
